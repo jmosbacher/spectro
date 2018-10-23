@@ -12,7 +12,7 @@
 import io,re,sys
 import serial
 
-class FW102C(object):
+class FW102C:
     """
        Class to control the ThorLabs FW102C filter wheel
        
@@ -46,55 +46,53 @@ class FW102C(object):
     isOpen   = False
     devInfo  = None
 
-    def __init__(self, port='COM5'):
+    def __init__(self, port='COM9'):
         try:
             self._fw = serial.Serial(port=port, baudrate=115200,
                                   bytesize=8, parity='N', stopbits=1,
                                   timeout=1, xonxoff=0, rtscts=0)
         except  serial.SerialException as ex:
-            print 'Port {0} is unavailable: {1}'.format(port, ex)
+            print( 'Port {0} is unavailable: {1}'.format(port, ex))
             return
         except  OSError as ex:
-            print 'Port {0} is unavailable: {1}'.format(port, ex)
+            print( 'Port {0} is unavailable: {1}'.format(port, ex))
             return
         self._sio = io.TextIOWrapper(io.BufferedRWPair(self._fw, self._fw, 1),
                        newline=None, encoding='ascii')
-								  
-        self._sio.write(unicode('*idn?\r'))
+        self._sio.write(u'*idn?\r')
         self.devInfo = self._sio.readlines(2048)[1][:-1]
-        print self.devInfo
-        self._sio.write(unicode('pos?\r'))
+        print( self.devInfo)
+        self._sio.write(u'pos?\r')
         self.pos = self._sio.readlines(2048)[1][:-1]
-        print  'position=',self.pos,
-        self._sio.write(unicode('pcount?\r'))
+        print(  'position=',self.pos,)
+        self._sio.write(u'pcount?\r')
         self.pcount = self._sio.readlines(2048)[1][:-1]
-        print  ', pcount=',self.pcount,
-        self._sio.write(unicode('trig?\r'))
+        print(', pcount=',self.pcount,)
+        self._sio.write(u'trig?\r')
         self.trig = self._sio.readlines(2048)[1][:-1]
-        print  ', trig=',self.trig,
-        self._sio.write(unicode('speed?\r'))
+        print(', trig=',self.trig,)
+        self._sio.write(u'speed?\r')
         self.speed = self._sio.readlines(2048)[1][:-1]
-        print  ', speed=',self.speed,
-        self._sio.write(unicode('sensors?\r'))
+        print(', speed=',self.speed,)
+        self._sio.write(u'sensors?\r')
         self.sensors = self._sio.readlines(2048)[1][:-1]
-        print  ', sensors=',self.sensors,
-        self._sio.write(unicode('baud?\r'))
+        print(', sensors=',self.sensors,)
+        self._sio.write(u'baud?\r')
         self.baud = self._sio.readlines(2048)[1][:-1]
         if self.baud: self.baud = 115200
         else: self.baud = 9600
-        print  ', baud=',self.baud
-				
+        print(', baud=',self.baud)
         self._sio.flush()
         self.isOpen  = True
     # end def __init__
     
     def help(self):
-        print self.__doc__
+        print( self.__doc__)
     # end def help
     
     def close(self):
         if not self.isOpen:
-            print "Close error: Device not open"
+            print( "Close error: Device not open")
             return "ERROR"
         #end if
         
@@ -102,39 +100,39 @@ class FW102C(object):
         self.isOpen = False
         return "OK"
     # end def close
-	
+
     def query(self, cmdstr):
         """
            Send query, get and return answer
         """
         if not self.isOpen:
-            print "Query error: Device not open"
+            print( "Query error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
         
         ans = 'ERROR'
         self._sio.flush()
-        res = self._sio.write(unicode(cmdstr+'\r'))
+        res = self._sio.write(cmdstr+u'\r')
         if res:
             ans = self._sio.readlines(2048)[1][:-1]
         #print 'queryans=',repr(ans)
         return ans
     # end def query
-	
+
     def command(self, cmdstr):
         """
            Send command, check for error, send query to check and return answer
            If no error, answer value should be equal to command argument value
         """
         if not self.isOpen:
-            print "Command error: Device not open"
+            print( "Command error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
         
         ans = 'ERROR'
         self._sio.flush()
         cmd = cmdstr.split('=')[0]
-        res = self._sio.write(unicode(cmdstr+'\r'))
+        res = self._sio.write(cmdstr+u'\r')
         ans = self._sio.readlines(2048)
         regerr = re.compile("Command error.*")
         errors = [m.group(0) for l in ans for m in [regerr.search(l)] if m]
@@ -145,38 +143,37 @@ class FW102C(object):
         #print 'ans=',repr(ans),cmd+'?'
         return ans
     # end def command
-	
+
     def getinfo(self):
         if not self.isOpen:
-            print "Getinfo error: Device not open"
+            print( "Getinfo error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
         
         return self.devInfo
-    # end def getinfo
 	
 #end class FW102C
 
 # Class test, when called directly
 if __name__ == "__main__":
-    fwl = FW102C(port='COM5')
+    fwl = FW102C(port='COM9')
     if not fwl.isOpen:
-	   print "FWL INIT FAILED"
-	   sys.exit(2)
-    print '**info',fwl.getinfo()
-    print '**idn?',fwl.query('*idn?')
-    
-    print '**pos=5',fwl.command('pos=5')
-    print '**pos?',fwl.query('pos?')
-    print '**pos=7',fwl.command('pos=7')
-    print '**pos?',fwl.query('pos?')
-    print '**pos=3',fwl.command('pos=3')
-    print '**pos?',fwl.query('pos?')
-    print '**pos=6',fwl.command('pos=6')
-    print '**pos?',fwl.query('pos?')
-    print '**qwzs=3',fwl.command('qwz=3')
-    print '**pos?',fwl.query('pos?')
-    print fwl.close()
-#end if
+        print( "FWL INIT FAILED")
+        sys.exit(2)
+    print( '**info',fwl.getinfo())
+    print( '**idn?',fwl.query('*idn?'))
+
+    print( '**pos=5',fwl.command('pos=5'))
+    print( '**pos?',fwl.query('pos?'))
+    print( '**pos=7',fwl.command('pos=7'))
+    print( '**pos?',fwl.query('pos?'))
+    print( '**pos=3',fwl.command('pos=3'))
+    print( '**pos?',fwl.query('pos?'))
+    print( '**pos=6',fwl.command('pos=6'))
+    print( '**pos?',fwl.query('pos?'))
+    print( '**qwzs=3',fwl.command('qwz=3'))
+    print( '**pos?',fwl.query('pos?'))
+    print( fwl.close())
+    #end if
 
 # oOo
