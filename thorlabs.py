@@ -4,5 +4,3 @@ class ThorlabsPM100USB:
 class FilterWheel:
     def __init__(self, wl_map):
         self.wl_map = wl_map
-
-        

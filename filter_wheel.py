@@ -173,7 +173,6 @@ if __name__ == "__main__":
     print( '**pos?',fwl.query('pos?'))
     print( '**qwzs=3',fwl.command('qwz=3'))
     print( '**pos?',fwl.query('pos?'))
-    print( fwl.close())
-    #end if
+    print(fwl.close())
 
 # oOo
