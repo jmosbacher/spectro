@@ -43,6 +43,7 @@ class FW102C:
         save      This will save all the settings as default on power up
         
     """
+    
     isOpen   = False
     devInfo  = None
 

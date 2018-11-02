@@ -50,12 +50,24 @@ class CM112:
             else:
                 self.query(26,gr)
                 time.sleep(4)
-        
+
+    def connect(self):
+        self.conn  = serial.Serial(self.port, baudrate=9600, timeout=1)
+
+    def isOpen(self):
+        if self.conn:
+            return self.conn.is_open()
+        return False
+
+    def disconnect(self):
+        if self.conn and self.conn.is_open():
+            self.conn.close()
+
     def __init__(self, port):
         self.port = port
         
     def __enter__(self):
-        self.conn = serial.Serial(self.port, baudrate=9600, timeout=1)
+        self.connect()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.conn.close()
+        self.disconnect()
