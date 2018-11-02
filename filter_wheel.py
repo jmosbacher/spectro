@@ -20,7 +20,7 @@ class FW102C:
           fwl.help()
           fwl.command('pos=5')
           fwl.query('pos?')
-          fwl.close()
+          fwl.disconnect()
           
        The following table describes all of the available commands and queries:
         *idn?     Get ID: Returns the model number and firmware version
@@ -44,69 +44,87 @@ class FW102C:
         
     """
     
-    isOpen   = False
+    
     devInfo  = None
 
     def __init__(self, port='COM9'):
-        try:
-            self._fw = serial.Serial(port=port, baudrate=115200,
-                                  bytesize=8, parity='N', stopbits=1,
-                                  timeout=1, xonxoff=0, rtscts=0)
-        except  serial.SerialException as ex:
-            print( 'Port {0} is unavailable: {1}'.format(port, ex))
-            return
-        except  OSError as ex:
-            print( 'Port {0} is unavailable: {1}'.format(port, ex))
-            return
-        self._sio = io.TextIOWrapper(io.BufferedRWPair(self._fw, self._fw, 1),
-                       newline=None, encoding='ascii')
-        self._sio.write(u'*idn?\r')
-        self.devInfo = self._sio.readlines(2048)[1][:-1]
-        print( self.devInfo)
-        self._sio.write(u'pos?\r')
-        self.pos = self._sio.readlines(2048)[1][:-1]
-        print(  'position=',self.pos,)
-        self._sio.write(u'pcount?\r')
-        self.pcount = self._sio.readlines(2048)[1][:-1]
-        print(', pcount=',self.pcount,)
-        self._sio.write(u'trig?\r')
-        self.trig = self._sio.readlines(2048)[1][:-1]
-        print(', trig=',self.trig,)
-        self._sio.write(u'speed?\r')
-        self.speed = self._sio.readlines(2048)[1][:-1]
-        print(', speed=',self.speed,)
-        self._sio.write(u'sensors?\r')
-        self.sensors = self._sio.readlines(2048)[1][:-1]
-        print(', sensors=',self.sensors,)
-        self._sio.write(u'baud?\r')
-        self.baud = self._sio.readlines(2048)[1][:-1]
-        if self.baud: self.baud = 115200
-        else: self.baud = 9600
-        print(', baud=',self.baud)
-        self._sio.flush()
-        self.isOpen  = True
+        self._port = port
+        self.connect()
+        if self.connectd:
+            self._sio.write(u'*idn?\r')
+            self.devInfo = self._sio.readlines(2048)[1][:-1]
+            print( self.devInfo)
+            self._sio.write(u'pos?\r')
+            self.pos = self._sio.readlines(2048)[1][:-1]
+            print(  'position=',self.pos,)
+            self._sio.write(u'pcount?\r')
+            self.pcount = self._sio.readlines(2048)[1][:-1]
+            print(', pcount=',self.pcount,)
+            self._sio.write(u'trig?\r')
+            self.trig = self._sio.readlines(2048)[1][:-1]
+            print(', trig=',self.trig,)
+            self._sio.write(u'speed?\r')
+            self.speed = self._sio.readlines(2048)[1][:-1]
+            print(', speed=',self.speed,)
+            self._sio.write(u'sensors?\r')
+            self.sensors = self._sio.readlines(2048)[1][:-1]
+            print(', sensors=',self.sensors,)
+            self._sio.write(u'baud?\r')
+            self.baud = self._sio.readlines(2048)[1][:-1]
+            if self.baud: self.baud = 115200
+            else: self.baud = 9600
+            print(', baud=',self.baud)
+            self._sio.flush()
+        
     # end def __init__
     
     def help(self):
         print( self.__doc__)
-    # end def help
+
+    @property
+    def port(self):
+        return self._port
     
-    def close(self):
-        if not self.isOpen:
-            print( "Close error: Device not open")
+    @port.setter
+    def set_port(self, value):
+        self._port = value
+        self.connect()
+
+    @property
+    def connected(self):
+        if self._fw is not None:
+            return self._fw.is_open()
+        return False
+
+    def connect(self):
+        try:
+            self._fw = serial.Serial(port=self.port, baudrate=115200,
+                                  bytesize=8, parity='N', stopbits=1,
+                                  timeout=1, xonxoff=0, rtscts=0)
+        except  serial.SerialException as ex:
+            print( 'Port {0} is unavailable: {1}'.format(self.port, ex))
+            return
+        except  OSError as ex:
+            print( 'Port {0} is unavailable: {1}'.format(self.port, ex))
+            return
+        self._sio = io.TextIOWrapper(io.BufferedRWPair(self._fw, self._fw, 1),
+                       newline=None, encoding='ascii')
+
+    def disconnect(self):
+        if not self.connected:
+            print( "Disconnect error: Device not open")
             return "ERROR"
         #end if
         
         self._fw.close()
-        self.isOpen = False
         return "OK"
-    # end def close
+    # end def disconnect
 
     def query(self, cmdstr):
         """
            Send query, get and return answer
         """
-        if not self.isOpen:
+        if not self.connected:
             print( "Query error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
@@ -125,7 +143,7 @@ class FW102C:
            Send command, check for error, send query to check and return answer
            If no error, answer value should be equal to command argument value
         """
-        if not self.isOpen:
+        if not self.connected:
             print( "Command error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
@@ -146,19 +164,47 @@ class FW102C:
     # end def command
 
     def getinfo(self):
-        if not self.isOpen:
+        if not self.connected:
             print( "Getinfo error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
         
         return self.devInfo
-	
-#end class FW102C
+
+    @property
+    def position(self):
+        return self.query("pos?")
+
+    @position.setter
+    def set_position(self, value):
+        self.command(f'pos={value}')
+        return self.position
+
+    @property
+    def sensors(self):
+        return self.query("sensors?")
+
+    @position.setter
+    def set_sensors(self, value):
+        if value in [0,1]:
+            self.command(f'sensors={value}')
+        return self.position
+
+    @property
+    def speed(self):
+        return self.query("speed?")
+
+    @speed.setter
+    def set_speed(self, value):
+        if value in [0,1]:
+            self.command(f'speed={value}')
+        return self.speed
+    
 
 # Class test, when called directly
 if __name__ == "__main__":
     fwl = FW102C(port='COM9')
-    if not fwl.isOpen:
+    if not fwl.connected:
         print( "FWL INIT FAILED")
         sys.exit(2)
     print( '**info',fwl.getinfo())
@@ -174,6 +220,6 @@ if __name__ == "__main__":
     print( '**pos?',fwl.query('pos?'))
     print( '**qwzs=3',fwl.command('qwz=3'))
     print( '**pos?',fwl.query('pos?'))
-    print(fwl.close())
+    print(fwl.disconnect())
 
 # oOo

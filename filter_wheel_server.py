@@ -1,56 +1,42 @@
-from flask import Flask
+from flask import Flask, url_for
+from flask_helpers import site_mapper, RestfulInstrument
+from flask_restful import reqparse, abort, Api, Resource
 from filter_wheel import FW102C
 import argparse
 import sys
+
 app = Flask(__name__)
+api = Api(app)
 
-
-@app.route('/position/')
-@app.route('/position/<int:pos>')
-def position(pos=None):
-    if pos is None:
-        return fwl.query('pos?')
-    return fwl.command(f'pos={pos}')
-
-@app.route('/sensors/')
-@app.route('/sensors/<int:val>')
-def sensors(val=None):
-    if val in [0,1]:
-        return fwl.command(f'sensors={val}')
-    else:
-        return fwl.query('sensors?')
-        
-@app.route('/speed/')
-@app.route('/speed/<int:val>')
-def speed(val=None):
-    if val in [0,1]:
-        return fwl.command(f'speed={val}')
-    else:
-        return fwl.query('speed?')
-        
-
-@app.route('/info')
-def info():
-    return fwl.getinfo()
+rparser = reqparse.RequestParser()
+rparser.add_argument('value')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start a webserver for a Thorlabs FW102C Filter Wheel.')
-    parser.add_argument('-COM', '--COM', dest='com', default='',
+    parser.add_argument('-NAME', '--NAME', dest='name', default='filter_wheel',
+                help='Serial port for filter wheel.')
+    parser.add_argument('-COM', '--COM', dest='com', default=1,
                 help='Serial port for filter wheel.')
     parser.add_argument('-IP','--IP',dest='ip',default='localhost',
                 help='IP to serve on.')
     parser.add_argument('-PORT','--PORT',dest='port', type=int, default=5000,
             help='Port to open.')
     kwargs = vars(parser.parse_args())
+    class RestfulFW102C(RestfulInstrument):
+        name = kwargs['name']
+        api = ['position', 'speed', 'sensors']
+        inst = FW102C(f'COM{kwargs["com"]}')
+
+    api.add_resource(RestfulFW102C, f'/{RestfulFW102C.name}/<ep>')
+    @app.route(f'/{RestfulFW102C.name}/attributes')
+    def attributes():
+        return "\n".join(RestfulFW102C.api)
+
     try:
-        fwl = FW102C(f'COM{kwargs["com"]}')
-        if not fwl.isOpen:
-            print( "FWL INIT FAILED")
-            sys.exit(2)
         app.run(host=kwargs['ip'], port=kwargs['port'])
     except KeyboardInterrupt:
         pass
     finally:
-        if fwl.isOpen:
-            fwl.close()
+        if RestfulFW102C.inst.connected:
+            RestfulFW102C.inst.disconnect()

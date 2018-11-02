@@ -13,7 +13,7 @@ rparser.add_argument('value')
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Start a webserver for a Thorlabs FW102C Filter Wheel.')
+    parser = argparse.ArgumentParser(description='Start a webserver for a Spectral Products Monochromator.')
     parser.add_argument('-NAME', '--NAME', dest='name', default='monochromator',
                 help='Serial port for filter wheel.')
     parser.add_argument('-COM', '--COM', dest='com', default=1,
