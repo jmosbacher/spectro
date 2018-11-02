@@ -23,48 +23,69 @@ class CM112:
     def home(self):
         self.query(255,255,255)
 
-    def get_wavelength(self):
+    @property
+    def wavelength(self):
         h,l = self.query(56,0)
         return (h*256+l)/10
-        
+
+    @wavelength.setter 
     def set_wavelength(self, wl):
         high, low = self.wl_to_bytes(wl)  #Set monochromator to wl
         while True:
-            cwl = self.get_wavelength()
+            cwl = self.wavelength
             if abs(wl - cwl)<1:
                 return 
             else:
                 self.query(16, high, low)
                 time.sleep(0.5)
-
-    def get_grating(self):
+    @property
+    def grating(self):
         h,l = self.query(56,4)
         return l
 
+    @grating.setter
     def set_grating(self,gr):
         if gr not in [1,2]:
             return 'Invalid grating number (must be 1 or 2)'
         while True:
-            if self.get_grating()==gr:
+            if self.grating==gr:
                 break
             else:
                 self.query(26,gr)
                 time.sleep(4)
+    @property
+    def port(self):
+        return self._port
+
+    @port.setter
+    def set_port(self, value):
+        self._port = value
+        if self.connected:
+            self.disconnect()
+        try:
+            self.connect()
+        except:
+            pass
 
     def connect(self):
-        self.conn  = serial.Serial(self.port, baudrate=9600, timeout=1)
+        self.conn  = serial.Serial(self._port, baudrate=9600, timeout=1)
 
-    def isOpen(self):
+    @property
+    def connected(self):
         if self.conn:
             return self.conn.is_open()
         return False
 
     def disconnect(self):
-        if self.conn and self.conn.is_open():
+        if self.connected:
             self.conn.close()
 
     def __init__(self, port):
-        self.port = port
+        self._port = port
+        try:
+            self.connect()
+        except:
+            self.conn = None
         
     def __enter__(self):
         self.connect()
