@@ -1,21 +1,25 @@
 from serial.rs485 import RS485
 import time
 class Energetiq:
+    public = ['power', 'connected', 'port']
+
     def query(self, q):
         self.conn.write(q.encode())
         res = self.conn.readlines(2048)[-1].strip()
         return res.split(b' = ')[-1].decode()
 
-    def get_power(self):
+    @property
+    def power(self):
         return self.query('Q')
 
-    def set_power(self, pwr):
+    @power.setter
+    def power(self, pwr):
         pwr = int(pwr)
         if pwr>100 or pwr<15:
             return 'Requested power out of range 15-100'
         
         while True:
-            p = self.get_power()
+            p = self.power
             if p==pwr:
                 return f'Power now at {pwr}%'
             elif p>pwr:
@@ -23,21 +27,35 @@ class Energetiq:
             elif p<pwr:
                 self.query('U')
             time.sleep(0.2)
+
         
     def connect(self):
-        self.conn = RS485(self.port, baudrate=9600, timeout=1)
+        try:
+            self.conn = RS485(self._port, baudrate=9600, timeout=1)
+        except:
+            return f'Could not connect to port {self._port}.'
 
-    def isOpen(self):
+    @property
+    def connected(self):
         if self.conn:
             return self.conn.is_open()
         return False
 
     def disconnect(self):
-        if self.conn and self.conn.is_open():
+        if self.connected:
             self.conn.close()
 
+    @property
+    def port(self):
+        return self._port
+
+    @port.setter
+    def port(self, value):
+        self._port = value
+        self.connect()
+
     def __init__(self, port='COM1'):
-        self.port = port
+        self._port = port
         
     def __enter__(self):
         self.connect()
@@ -47,4 +65,4 @@ class Energetiq:
 
 if __name__ == '__main__':
     with Energetiq('COM8') as en:
-        print(en.get_power())
+        print(en.power)

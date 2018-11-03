@@ -7,12 +7,13 @@
 # who       when        what
 # --------  ----------  -------------------------------------------------
 # gsimond   20140922    modified from Adrien.Deline version
-#
+# jmosbacher 20181020   modified to fit my needs
 
 import io,re,sys
 import serial
 
 class FW102C:
+    public = ['position','speed','sensors','port', 'connected']
     """
        Class to control the ThorLabs FW102C filter wheel
        
@@ -49,11 +50,10 @@ class FW102C:
 
     def __init__(self, port='COM9'):
         self._port = port
+        self._fw = None
         self.connect()
-        if self.connectd:
-            self._sio.write(u'*idn?\r')
-            self.devInfo = self._sio.readlines(2048)[1][:-1]
-            print( self.devInfo)
+        print( self.info)
+        if self.connected:
             self._sio.write(u'pos?\r')
             self.pos = self._sio.readlines(2048)[1][:-1]
             print(  'position=',self.pos,)
@@ -86,7 +86,7 @@ class FW102C:
         return self._port
     
     @port.setter
-    def set_port(self, value):
+    def port(self, value):
         self._port = value
         self.connect()
 
@@ -109,6 +109,8 @@ class FW102C:
             return
         self._sio = io.TextIOWrapper(io.BufferedRWPair(self._fw, self._fw, 1),
                        newline=None, encoding='ascii')
+        self._sio.write(u'*idn?\r')
+        self.devInfo = self._sio.readlines(2048)[1][:-1]
 
     def disconnect(self):
         if not self.connected:
@@ -162,10 +164,10 @@ class FW102C:
         #print 'ans=',repr(ans),cmd+'?'
         return ans
     # end def command
-
-    def getinfo(self):
+    @property
+    def info(self):
         if not self.connected:
-            print( "Getinfo error: Device not open")
+            print( "Get info error: Device not open")
             return "DEVICE NOT OPEN"
         #end if
         
@@ -176,7 +178,7 @@ class FW102C:
         return self.query("pos?")
 
     @position.setter
-    def set_position(self, value):
+    def position(self, value):
         self.command(f'pos={value}')
         return self.position
 
@@ -185,7 +187,7 @@ class FW102C:
         return self.query("sensors?")
 
     @position.setter
-    def set_sensors(self, value):
+    def sensors(self, value):
         if value in [0,1]:
             self.command(f'sensors={value}')
         return self.position
@@ -195,7 +197,7 @@ class FW102C:
         return self.query("speed?")
 
     @speed.setter
-    def set_speed(self, value):
+    def speed(self, value):
         if value in [0,1]:
             self.command(f'speed={value}')
         return self.speed
@@ -207,7 +209,7 @@ if __name__ == "__main__":
     if not fwl.connected:
         print( "FWL INIT FAILED")
         sys.exit(2)
-    print( '**info',fwl.getinfo())
+    print( '**info',fwl.info)
     print( '**idn?',fwl.query('*idn?'))
 
     print( '**pos=5',fwl.command('pos=5'))

@@ -4,12 +4,10 @@ from flask_restful import reqparse, abort, Api, Resource
 from spectral_products import CM112
 import argparse
 import sys
-
+import redis
 app = Flask(__name__)
 api = Api(app)
 
-rparser = reqparse.RequestParser()
-rparser.add_argument('value')
 
 
 if __name__ == '__main__':
@@ -23,20 +21,24 @@ if __name__ == '__main__':
     parser.add_argument('-PORT','--PORT',dest='port', type=int, default=5000,
             help='Port to open.')
     kwargs = vars(parser.parse_args())
+    name = kwargs['name']
+    host = kwargs['ip']
+    port = kwargs['port']
     class RestfulCM112(RestfulInstrument):
-        name = kwargs['name']
         api = ['wavelength', 'grating', 'port']
         inst = CM112(f'COM{kwargs["com"]}')
 
-    api.add_resource(RestfulCM112, f'/{RestfulCM112.name}/<ep>')
-    @app.route(f'/{RestfulCM112.name}/attributes')
+    api.add_resource(RestfulCM112, f'/{name}/<ep>')
+    @app.route(f'/{name}/attributes')
     def attributes():
         return "\n".join(RestfulCM112.api)
-
+    rs = redis.Redis("localhost")
     try:
-        app.run(host=kwargs['ip'], port=kwargs['port'])
+        app.run(host=host, port=port)
+        rs.set(name, f'{host}:{port}')
     except KeyboardInterrupt:
         pass
     finally:
         if RestfulCM112.inst.connected:
             RestfulCM112.inst.disconnect()
+        rs.set(name, '')

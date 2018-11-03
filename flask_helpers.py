@@ -1,27 +1,8 @@
 from flask import url_for
-
 from flask_restful import reqparse, abort, Api, Resource
 
-class RestfulInstrument(Resource):
-        name = 'instrument'
-        api = []
-        inst = None
 
-        def get(self, ep):
-            if ep in self.api:
-                resp = getattr(self.inst, ep)
-            else:
-                f'No attribute named {ep}'
-            return {ep: resp}
-            
-        def put(self, ep):
-            if ep in self.api:
-                args = rparser.parse_args()
-                setattr(self.inst, ep, args['value'])
-                resp = getattr(self.inst, ep)
-            else:
-                f'No attribute named {ep}'        
-            return {ep: resp}
+
 
 def site_mapper(app, path):
     def has_no_empty_params(rule):

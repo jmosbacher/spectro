@@ -4,6 +4,7 @@ import time
 
 
 class CM112:
+    public = ['wavelength', 'grating', 'port', 'connected']
     @staticmethod
     def wl_to_bytes(wl):
         a = wl*10.
@@ -29,7 +30,7 @@ class CM112:
         return (h*256+l)/10
 
     @wavelength.setter 
-    def set_wavelength(self, wl):
+    def wavelength(self, wl):
         high, low = self.wl_to_bytes(wl)  #Set monochromator to wl
         while True:
             cwl = self.wavelength
@@ -44,7 +45,7 @@ class CM112:
         return l
 
     @grating.setter
-    def set_grating(self,gr):
+    def grating(self,gr):
         if gr not in [1,2]:
             return 'Invalid grating number (must be 1 or 2)'
         while True:
@@ -58,7 +59,7 @@ class CM112:
         return self._port
 
     @port.setter
-    def set_port(self, value):
+    def port(self, value):
         self._port = value
         if self.connected:
             self.disconnect()
