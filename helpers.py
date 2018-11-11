@@ -11,4 +11,3 @@ def find_instrument(id_answer, id_query = '*?IDN', read_termination='\r'):
     else:
         return None
     
-    
