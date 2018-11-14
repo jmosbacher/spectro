@@ -1,0 +1,101 @@
+baud(6,4800)
+i =0
+CaseTest = 0 :rem the truth value of strcomp 
+
+while(i<1)
+comread(6,a$)
+print(a$)
+
+select case CaseTest
+
+case strcomp(a$,"Exit")
+   comwrite (6," Stoped ANDOR porgram\n")
+   print("Stoped ANDOR porgram")
+   i=5
+   break
+
+case strcomp(a$,"SetGrating") :rem
+	comread(6,grating$)
+	grating =  val(grating$)
+	SetGrating(grating)
+   	grating$ = GetGrating()
+   	Responce$ = "spectro grating set to " + grating$
+   	comwrite (6,Responce$)
+   	print(Responce$)
+	break
+
+case strcomp(a$,"GetGrating") :rem
+   	grating$ = GetGrating()
+   	Responce$ = "grating set to " + grating$
+   	comwrite (6,Responce$)
+   	print(Responce$)
+	break
+
+case strcomp(a$,"SetReadoutMode") :rem
+	comread(6,int$)
+	mode = val(int$)
+	print(mode)
+	if (mode == 0) then
+	comwrite (6,"Camera Set To Full Vertical Bininning\n")
+	print("Camera Set To Full Vertical Bininning")
+	endif
+	if (mode == 4) then
+	comwrite (6," Camera Set To Image\n")
+	print("Camera Set To Image")
+	endif	
+	SetReadoutMode(mode)
+ 	break
+ 	
+
+case strcomp(a$,"CArea"):
+	comread(6,start$)
+	comread(6,end$)
+	start=val(start$)
+	endd=val(end$)
+	x=carea(#0_sig,start,endd)
+	comwrite(6,x)
+	print("Corrected area equals" + x)
+ 	break
+ 
+case strcomp(a$,"SetWavelength") :rem command should be writen as "SetExposureTime\r552.3\r".
+   comread(6,int$)
+   print(int$)
+   SetWavelength(val(int$))
+   wave = GetWavelength()
+   Responce$ = "Wavelength set to " + wave 
+   comwrite (6,Responce$ )
+   print(Responce$)
+   break
+ 
+   
+case strcomp(a$,"SetExposureTime") :rem command should be writen as "SetExposureTime\r12.5\r" or 12.5 is in seconds
+   comread(6,float$)
+   print(float$)
+   SetExposureTime(val(float$))
+   ExposureTime = GetExposureTime()
+   Responce$ = "Exposure time set to " + ExposureTime 
+   comwrite (6,Responce$ )
+   print(Responce$)
+   break
+
+
+case strcomp(a$,"Run") 
+   run()
+   comwrite (6,"Done")
+   print("Exposure Done")
+   break
+   
+ 
+case strcomp(a$,"Save") :rem command should be writen as "Save\rc:\file\asciname.asc\r".
+   comread(6,Path$)
+   SaveAsciiXY(#0, Path$, 2, 1) 
+   comwrite (6,"Saved ascii file in "+Path$)
+   print("Saved ascii file in "+Path$)
+   break
+case else
+  comwrite (6,"Not a valid command")
+  print("Not a valid command")
+  break
+selend
+
+wend 
