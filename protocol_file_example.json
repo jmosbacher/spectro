@@ -1,0 +1,51 @@
+{
+  "states": [
+    {
+      "name": "250-300",
+      "measurement": [0],
+      "state": {
+        "mono": {
+            "grating": [1],
+            "wavelength": "range(250,405,5)"
+        },
+
+        "lpfw": {
+            "position": [1, 2],
+            "sensors": [0]
+        },
+
+        "spfw": {
+            "position": [1, 2],
+            "sensors": [0]
+        }
+      }
+    }
+
+  ],
+
+  "measurements": [
+    {
+      "name": "Andor",
+      "id": 0,
+      "config": {
+        "grating": [1],
+        "wavelength": [400],
+        "exposure": [10, 1, 0.1],
+        "mode": ["background", "signal" ],
+        "path": ["{working_dir}/template_{exp_idx}_{state_idx}.asc"]
+      }
+    },
+
+    {
+      "name": "Andor",
+      "id": 1,
+      "config": {
+        "grating": [2],
+        "wavelength": [600],
+        "exposure": [10, 1, 0.1],
+        "mode": ["background", "signal" ],
+        "path": ["{working_dir}/template_{exp_idx}_{state_idx}.asc"]
+      }
+    }
+  ]
+}
