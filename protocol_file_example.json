@@ -1,8 +1,10 @@
 {
+  "working_directory":"",
+
   "states": [
     {
       "name": "250-300",
-      "measurement": [0],
+      "measurements": [0],
       "state": {
         "mono": {
             "grating": [1],

@@ -1,55 +1,155 @@
 from itertools import product
 import time
 from typing import Iterable, Dict
+import json
+from collections import defaultdict
 
 
 class Measurement:
     name = 'measurement'
 
-    def execute(self, cfg):
+    def __init__(self, sys_state: dict):
+        self.system_state = sys_state
+
+    def perform(self, idx, system, state):
         raise NotImplementedError
 
 
-class Andor(Measurement):
+class AndorSignal(Measurement):
     #name = 'Andor'
 
-    def __init__(self, andor):
-        self.andor  = andor
+    def perform(self, idx, system, state):
+        andor = system.andor
+        andor.shutter = 'open'
+        andor.running = True
+        while andor.running:
+            time.sleep(0.5)
+        andor.saved = True
 
-    def execute(self, cfg: dict):
-        path = cfg.pop("save_path", f"andor_data_file_{int(time.time())}.asc")
-        for k, v in cfg.items():
-            setattr(self.andor, k, v)
-        self.andor.running = True
-        while self.andor.running:
-            time.sleep(1)
-        self.andor.save_path = path
+class AndorBackground(Measurement):
+    #name = 'Andor'
+
+    def perform(self, idx, system, state):
+        andor = system.andor
+        andor.shutter = 'closed'
+        andor.running = True
+        while andor.running:
+            time.sleep(0.5)
+        andor.saved = True
+
+class MeasurementSet(Measurement):
+
+    def __init__(self, sys_state: dict, measurements: Iterable[Measurement]):
+        super().__init__(sys_state)
+        self.measurements = measurements
+
+    def perform(self, idx, system, state):
+        for meas in self.measurements:
+            meas.perform(system)
+            time.sleep(0.5)
+
+class Protocol:
+    def __init__(self, config: dict, changed_only=False):
+        self.config = config
+        self.changed_only = changed_only
+
+    @classmethod
+    def from_config_file(cls, path, changed_only=False):
+        import configparser
+        config = configparser.ConfigParser()
+        config.read(path)
+        configs = defaultdict(list)
+
+        for name in config.sections():
+            params = dict(config[name])
+            name = tuple(name.split('.'))
+            t = params.pop('type', 'constant')
+
+            params['values'] = eval(params.pop('values', '[]'))
+            configs[t].append((name, params))
+        cfg = cls.flatten_configs(configs)
+        return cls(cfg, changed_only)
+
+    @staticmethod
+    def flatten_configs(configs):
+        lists = []
+        for (dev, attr), cfg in configs['list']:
+            alias = cfg.get("alias", f"{dev}_{attr}")
+            l = [(dev, attr, alias, val) for val in cfg['values']]
+            lists.append(l)
+
+        mappings = []
+        for (dev, attr), cfg in configs['mapping']:
+            mapping = {val: cfg[f"{val}"] for val in cfg["values"]}
+            alias = cfg.get("alias", f"{dev}_{attr}")
+            mappings.append((dev, attr, alias, mapping))
+
+        constants = []
+        for (dev,), cfg in configs['constant']:
+            cs = [(dev, attr, f"{dev}_{attr}", cfg[f"{attr}"]) for attr in cfg["values"]]
+            constants.extend(cs)
+
+        derivations = []
+        for (dev,), cfg in configs['derivation']:
+            cs = [(dev, attr, f"{dev}_{attr}", cfg[f"{attr}"]) for attr in cfg["values"]]
+            derivations.extend(cs)
+
+        config = {"lists": lists, "mappings": mappings,
+                  "constants": constants, "derivations": derivations}
+        return config
+
+    def __iter__(self):
+        state = defaultdict(dict)
+
+        local = {}
+
+        for dev, attr, alias, val in self.config["constants"]:
+            state[dev][attr] = val
+            # local[alias] = val
+
+        for idx, lparams in enumerate(product(*self.config["lists"])):
+            new_state = defaultdict(dict)
+            local['state_idx'] = idx
+            for (dev, attr, alias, val) in lparams:
+                local[alias] = val
+                if state[dev].get(attr, None) != val:
+                    new_state[dev][attr] = val
+                state[dev][attr] = val
+            for dev, attr, alias, mapping in self.config['mappings']:
+                for val, condition in mapping.items():
+                    if eval(condition.format(**local)):
+                        if state[dev].get(attr, None) != val:
+                            new_state[dev][attr] = val
+                        state[dev][attr] = val
+                        break
+            for dev, attr, alias, expression in self.config['derivations']:
+                val = expression.format(**local)
+                if state[dev].get(attr, None) != val:
+                    new_state[dev][attr] = val
+                state[dev][attr] = val
+            # state.update(new_state)
+            if self.changed_only and idx:
+                yield idx, new_state
+            else:
+                yield idx, state
 
 
 class Experiment:
 
-    def __init__(self, system, working_dir,
-                 states: Iterable[Dict[str, Dict]],
-                 configs: Iterable[Dict[str, Dict]],
+    def __init__(self, system, working_dir, protocol,
                  measurements: Iterable[Measurement]):
-        self.sys = system
+        self.system = system
         self.wd = working_dir
-        self.states = states
-        self.configs = configs
+        self.protocol = protocol
         self.measurements = measurements
 
-    @classmethod
-    def from_protocol_file(cls, system, path: str):
-        pass
+    def run(self):
+        for idx, state in self.protocol:
+            self.system.set_state(state)
+            for measurement in self.measurements:
+                measurement.perform(idx, self.system, state)
 
-    def run(self, repeats=1):
-        state_nums = range(len(self.states))
-        for exp_idx, (state_idx, state, measurement), config in product(range(repeats),
-                                                         zip(state_nums, self.states, self.configs),
-                                                         self.measurements):
-            self.sys.set_state(state)
-            cfg = {k: v.format(exp_idx=exp_idx, state_idx=state_idx, working_dir=self.wd)
-                   for k, v in config[measurement.__class__.__name__].items()}
 
-            measurement.execute(cfg)
+
+
 
